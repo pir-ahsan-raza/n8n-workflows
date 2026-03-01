@@ -1,0 +1,165 @@
+{
+  "name": "Lead Capture to CRM Automation with Email and Notifications",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "lead-capture",
+        "options": {
+          "responseCode": {
+            "values": {}
+          }
+        }
+      },
+      "id": "c2d1d012-2e32-4fff-a21e-4933f68725b2",
+      "name": "Form Submission",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        256,
+        304
+      ],
+      "webhookId": "82cbf276-18df-452d-8b86-055ced063160"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "mode": "list",
+          "value": ""
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "list",
+          "value": ""
+        }
+      },
+      "id": "ad49d7c5-804f-42fa-82d3-8a06efbd2d2c",
+      "name": "Save to Google Sheets",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        480,
+        304
+      ]
+    },
+    {
+      "parameters": {
+        "email": "={{ $json.body.email }}",
+        "additionalFields": {
+          "companyName": "={{ $json.body.company }}",
+          "firstName": "={{ $json.body.firstName }}",
+          "lastName": "={{ $json.body.lastName }}",
+          "phoneNumber": "={{ $json.body.phone }}"
+        },
+        "options": {}
+      },
+      "id": "ef29207e-1754-4e43-9ebc-6adf5240eeec",
+      "name": "Add to HubSpot",
+      "type": "n8n-nodes-base.hubspot",
+      "typeVersion": 2.2,
+      "position": [
+        704,
+        304
+      ]
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $json.body.email }}",
+        "subject": "Welcome! Thanks for your interest",
+        "message": "=Hi {{ $json.body.firstName }},\n\nThank you for reaching out to us! We received your inquiry and our team will get back to you shortly.\n\nBest regards,\nThe Team",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "id": "66278cbd-d7aa-4d82-afe9-28a2345b2006",
+      "name": "Send Welcome Email",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        928,
+        304
+      ],
+      "webhookId": "99246e38-021b-4ca7-962b-7cc5d6db8adb"
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "mode": "list",
+          "value": ""
+        },
+        "text": "=🎯 New Lead Captured!\n\n*Name:* {{ $('Form Submission').item.json.body.firstName }} {{ $('Form Submission').item.json.body.lastName }}\n*Email:* {{ $('Form Submission').item.json.body.email }}\n*Company:* {{ $('Form Submission').item.json.body.company }}\n*Phone:* {{ $('Form Submission').item.json.body.phone }}\n\nLead has been added to HubSpot and received a welcome email.",
+        "otherOptions": {}
+      },
+      "id": "c6a3ca55-d528-407f-bc75-fc510983aac1",
+      "name": "Notify Team on Slack",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.4,
+      "position": [
+        1152,
+        304
+      ],
+      "webhookId": "edf43402-56c9-45cf-9562-286cb86048e3"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Form Submission": {
+      "main": [
+        [
+          {
+            "node": "Save to Google Sheets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save to Google Sheets": {
+      "main": [
+        [
+          {
+            "node": "Add to HubSpot",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Add to HubSpot": {
+      "main": [
+        [
+          {
+            "node": "Send Welcome Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Welcome Email": {
+      "main": [
+        [
+          {
+            "node": "Notify Team on Slack",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "availableInMCP": false
+  },
+  "versionId": "cb783a80-3779-464f-bba9-b313223ee884",
+  "meta": {
+    "instanceId": "d787284d04840598b22fd5b29cf3b7b9ac7c01be874561b2b2d046fffaf570eb"
+  },
+  "id": "FiWUPmIHcRMTRTzz",
+  "tags": []
+}
