@@ -1,0 +1,221 @@
+{
+  "name": "Scenario 2 — E-commerce Order Handler",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "new-order",
+        "options": {}
+      },
+      "id": "node-webhook",
+      "name": "New Order",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [240, 300],
+      "webhookId": "new-order-001"
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=https://dummyjson.com/users/{{ $json.body.userId }}",
+        "options": {}
+      },
+      "id": "node-http",
+      "name": "Fetch Customer Data",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [480, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get data from previous nodes\nconst customer = $input.item.json;\nconst order = $('New Order').item.json.body;\n\n// Simulate order count using customer ID\n// In real Shopify this would be customer.orders_count\nconst orderCount = customer.id % 10; // gives us 0-9 for simulation\n\n// Calculate loyalty tier\nlet tier;\nlet tierLabel;\n\nif (orderCount <= 1) {\n  tier = 'first_timer';\n  tierLabel = 'First Timer';\n} else if (orderCount <= 4) {\n  tier = 'returning';\n  tierLabel = 'Returning Customer';\n} else {\n  tier = 'vip';\n  tierLabel = 'VIP Customer';\n}\n\n// Return everything the next nodes need\nreturn {\n  // Customer info\n  firstName: customer.firstName,\n  lastName: customer.lastName,\n  email: customer.email,\n  \n  // Order info\n  orderId: order.orderId,\n  product: order.product,\n  amount: order.amount,\n  \n  // Tier decision\n  tier: tier,\n  tierLabel: tierLabel,\n  orderCount: orderCount,\n  \n  // Discount logic\n  discountCode: tier === 'vip' ? 'VIP20' : tier === 'returning' ? 'RETURN10' : 'WELCOME5'\n};"
+      },
+      "id": "node-code",
+      "name": "Calculate Loyalty Tier",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [720, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": false,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "condition-vip",
+              "leftValue": "={{ $json.tier }}",
+              "rightValue": "vip",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "node-if-vip",
+      "name": "Is VIP?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [960, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": false,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "condition-returning",
+              "leftValue": "={{ $json.tier }}",
+              "rightValue": "returning",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "node-if-returning",
+      "name": "Is Returning?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1200, 420]
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $json.email }}",
+        "subject": "=🌟 VIP Order Confirmed — Thank You {{ $json.firstName }}!",
+        "message": "=Hi {{ $json.firstName }},\n\nAs one of our VIP customers, you mean the world to us. Your order #{{ $json.orderId }} for {{ $json.product }} (${{ $json.amount }}) is confirmed and being prioritized.\n\n🎁 As a thank you, use code *{{ $json.discountCode }}* for 20% off your next order.\n\nYou've ordered with us {{ $json.orderCount }} times — we genuinely appreciate your loyalty.\n\nWarm regards,\nThe Team",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "id": "node-email-vip",
+      "name": "Email — VIP",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [1200, 180]
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $json.email }}",
+        "subject": "=👋 Welcome Back {{ $json.firstName }}! Order Confirmed",
+        "message": "=Hi {{ $json.firstName }},\n\nGreat to see you again! Your order #{{ $json.orderId }} for {{ $json.product }} (${{ $json.amount }}) is confirmed.\n\n💛 Here's a loyalty reward — use *{{ $json.discountCode }}* for 10% off your next purchase.\n\nThanks for coming back!\nThe Team",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "id": "node-email-returning",
+      "name": "Email — Returning",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [1440, 420]
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $json.email }}",
+        "subject": "=🎉 Order Confirmed {{ $json.firstName }} — Welcome!",
+        "message": "=Hi {{ $json.firstName }},\n\nThank you for your first order! We're so excited to have you.\n\nYour order #{{ $json.orderId }} for {{ $json.product }} (${{ $json.amount }}) is confirmed and on its way.\n\n🎁 As a welcome gift, use *{{ $json.discountCode }}* for 5% off your next order.\n\nWelcome to the family!\nThe Team",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "id": "node-email-firsttimer",
+      "name": "Email — First Timer",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [1440, 600]
+    }
+  ],
+  "connections": {
+    "New Order": {
+      "main": [
+        [
+          {
+            "node": "Fetch Customer Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Customer Data": {
+      "main": [
+        [
+          {
+            "node": "Calculate Loyalty Tier",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Calculate Loyalty Tier": {
+      "main": [
+        [
+          {
+            "node": "Is VIP?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is VIP?": {
+      "main": [
+        [
+          {
+            "node": "Email — VIP",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Is Returning?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Returning?": {
+      "main": [
+        [
+          {
+            "node": "Email — Returning",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Email — First Timer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "active": false,
+  "settings": {
+    "availableInMCP": false
+  },
+  "meta": {
+    "instanceId": "scenario-2-ecommerce"
+  },
+  "tags": ["scenario-2", "ecommerce", "HTTP-request", "code-node", "loyalty"]
+}
