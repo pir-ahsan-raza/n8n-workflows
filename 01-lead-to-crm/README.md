@@ -12,7 +12,7 @@ No more copy-pasting leads manually. Ever.
 
 ## 🖼️ How it looks
 
-![Workflow](workflow-preview.png)
+![Workflow](workflow-prev.png)
 
 ---
 
