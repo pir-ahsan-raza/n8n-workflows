@@ -1,51 +1,75 @@
 {
-  "name": "Lead Capture to CRM Automation with Email and Notifications",
+  "name": "My workflow",
   "nodes": [
     {
       "parameters": {
         "httpMethod": "POST",
-        "path": "lead-capture",
-        "options": {
-          "responseCode": {
-            "values": {}
-          }
-        }
+        "path": "lead-capture-smart",
+        "options": {}
       },
-      "id": "c2d1d012-2e32-4fff-a21e-4933f68725b2",
+      "id": "8da29ca8-a51b-4cb6-ba73-1d75fe5723e9",
       "name": "Form Submission",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2.1,
       "position": [
-        256,
-        304
+        -480,
+        128
       ],
-      "webhookId": "82cbf276-18df-452d-8b86-055ced063160"
+      "webhookId": "lead-capture-smart-001"
     },
     {
       "parameters": {
-        "operation": "append",
-        "documentId": {
-          "__rl": true,
-          "mode": "list",
-          "value": ""
+        "conditions": {
+          "options": {
+            "caseSensitive": false,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "condition-firstname",
+              "leftValue": "={{ $json.body.firstName }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty"
+              }
+            },
+            {
+              "id": "condition-company",
+              "leftValue": "={{ $json.body.company }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty"
+              }
+            },
+            {
+              "id": "condition-email",
+              "leftValue": "={{ $json.body.email }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty"
+              }
+            }
+          ],
+          "combinator": "and"
         },
-        "sheetName": {
-          "__rl": true,
-          "mode": "list",
-          "value": ""
-        }
+        "options": {}
       },
-      "id": "ad49d7c5-804f-42fa-82d3-8a06efbd2d2c",
-      "name": "Save to Google Sheets",
-      "type": "n8n-nodes-base.googleSheets",
-      "typeVersion": 4.7,
+      "id": "b03036d7-d5a9-4b47-9a3a-f274b4f7b240",
+      "name": "Is Hot Lead?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
       "position": [
-        480,
-        304
+        -240,
+        128
       ]
     },
     {
       "parameters": {
+        "authentication": "oAuth2",
         "email": "={{ $json.body.email }}",
         "additionalFields": {
           "companyName": "={{ $json.body.company }}",
@@ -55,54 +79,192 @@
         },
         "options": {}
       },
-      "id": "ef29207e-1754-4e43-9ebc-6adf5240eeec",
+      "id": "4a9f3de3-b528-495d-b18d-0939d13a5489",
       "name": "Add to HubSpot",
       "type": "n8n-nodes-base.hubspot",
       "typeVersion": 2.2,
       "position": [
-        704,
-        304
-      ]
-    },
-    {
-      "parameters": {
-        "sendTo": "={{ $json.body.email }}",
-        "subject": "Welcome! Thanks for your interest",
-        "message": "=Hi {{ $json.body.firstName }},\n\nThank you for reaching out to us! We received your inquiry and our team will get back to you shortly.\n\nBest regards,\nThe Team",
-        "options": {
-          "appendAttribution": false
-        }
-      },
-      "id": "66278cbd-d7aa-4d82-afe9-28a2345b2006",
-      "name": "Send Welcome Email",
-      "type": "n8n-nodes-base.gmail",
-      "typeVersion": 2.2,
-      "position": [
-        928,
-        304
+        0,
+        0
       ],
-      "webhookId": "99246e38-021b-4ca7-962b-7cc5d6db8adb"
+      "credentials": {
+        "hubspotOAuth2Api": {
+          "id": "SR7XJorX89q2PHKe",
+          "name": "HubSpot account"
+        }
+      }
     },
     {
       "parameters": {
+        "authentication": "oAuth2",
         "select": "channel",
         "channelId": {
           "__rl": true,
+          "value": "",
           "mode": "list",
-          "value": ""
+          "cachedResultName": "all-test-server"
         },
-        "text": "=🎯 New Lead Captured!\n\n*Name:* {{ $('Form Submission').item.json.body.firstName }} {{ $('Form Submission').item.json.body.lastName }}\n*Email:* {{ $('Form Submission').item.json.body.email }}\n*Company:* {{ $('Form Submission').item.json.body.company }}\n*Phone:* {{ $('Form Submission').item.json.body.phone }}\n\nLead has been added to HubSpot and received a welcome email.",
+        "text": "=🔥 *HOT LEAD — Action Required!*\n\n*Name:* {{ $('Form Submission').item.json.body.firstName }} {{ $('Form Submission').item.json.body.lastName }}\n*Email:* {{ $('Form Submission').item.json.body.email }}\n*Company:* {{ $('Form Submission').item.json.body.company }}\n*Phone:* {{ $('Form Submission').item.json.body.phone }}\n\n✅ Added to HubSpot. Follow up within 1 hour.",
         "otherOptions": {}
       },
-      "id": "c6a3ca55-d528-407f-bc75-fc510983aac1",
-      "name": "Notify Team on Slack",
+      "id": "be7fa8b5-361f-4852-bcd2-67c598f8762d",
+      "name": "Slack — Hot Lead Alert",
       "type": "n8n-nodes-base.slack",
       "typeVersion": 2.4,
       "position": [
-        1152,
-        304
+        240,
+        0
       ],
-      "webhookId": "edf43402-56c9-45cf-9562-286cb86048e3"
+      "webhookId": "389c3833-ef30-4886-9e99-6f27be02cce3",
+      "credentials": {
+        "slackOAuth2Api": {
+          "id": "f6RM8Dlo9XVaWu28",
+          "name": "Slack account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "",
+          "mode": "list",
+          "cachedResultName": "Untitled spreadsheet",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "firstName": "={{\"\" + $json.body.firstName }}",
+            "lastName": "={{\"\" + ($json.body.lastName || \"N/A\") }}",
+            "email": "={{\"\" + $json.body.email }}",
+            "company": "={{\"\" + ($json.body.company || \"N/A\") }}",
+            "phone": "={{\"\" + ($json.body.phone || \"N/A\") }}",
+            "status": "cold — incomplete submission",
+            "submittedA": "={{\"\" + new Date().toISOString() }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "firstName",
+              "displayName": "firstName",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "lastName",
+              "displayName": "lastName",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "email",
+              "displayName": "email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "company",
+              "displayName": "company",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "phone",
+              "displayName": "phone",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "submittedA",
+              "displayName": "submittedA",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "9b66cdef-f672-4116-9178-d8cf8ccb30b5",
+      "name": "Save Cold Lead to Sheets",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        0,
+        240
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "O3Auhoc9wJeqvbX6",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "",
+          "mode": "list",
+          "cachedResultName": "new-channel"
+        },
+        "text": "=📋 *Cold Lead — Incomplete Submission*\n\n*Email:* {{ $('Form Submission').item.json.body.email }}\n*Name:* {{ $('Form Submission').item.json.body.firstName || 'Not provided' }}\n*Company:* {{ $('Form Submission').item.json.body.company || 'Not provided' }}\n\n⚠️ Saved to Sheets. No HubSpot entry. Low priority follow-up.",
+        "otherOptions": {}
+      },
+      "id": "defa17d4-5d15-4e56-9fb5-56a19fe6df58",
+      "name": "Slack — Cold Lead Note",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.4,
+      "position": [
+        240,
+        240
+      ],
+      "webhookId": "57c49e30-30da-4548-80a9-a47ebd59c5f5",
+      "credentials": {
+        "slackOAuth2Api": {
+          "id": "f6RM8Dlo9XVaWu28",
+          "name": "Slack account"
+        }
+      }
     }
   ],
   "pinData": {},
@@ -111,18 +273,25 @@
       "main": [
         [
           {
-            "node": "Save to Google Sheets",
+            "node": "Is Hot Lead?",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Save to Google Sheets": {
+    "Is Hot Lead?": {
       "main": [
         [
           {
             "node": "Add to HubSpot",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Save Cold Lead to Sheets",
             "type": "main",
             "index": 0
           }
@@ -133,18 +302,18 @@
       "main": [
         [
           {
-            "node": "Send Welcome Email",
+            "node": "Slack — Hot Lead Alert",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Send Welcome Email": {
+    "Save Cold Lead to Sheets": {
       "main": [
         [
           {
-            "node": "Notify Team on Slack",
+            "node": "Slack — Cold Lead Note",
             "type": "main",
             "index": 0
           }
@@ -154,12 +323,15 @@
   },
   "active": false,
   "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
     "availableInMCP": false
   },
-  "versionId": "cb783a80-3779-464f-bba9-b313223ee884",
+  "versionId": "7a7c6037-0af8-4463-966e-d371cc4d83fd",
   "meta": {
+    "templateCredsSetupCompleted": true,
     "instanceId": "d787284d04840598b22fd5b29cf3b7b9ac7c01be874561b2b2d046fffaf570eb"
   },
-  "id": "FiWUPmIHcRMTRTzz",
+  "id": "3dl5vTlpbQSxTcwx",
   "tags": []
 }
