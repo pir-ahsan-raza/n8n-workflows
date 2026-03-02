@@ -1,0 +1,149 @@
+{
+  "name": "Scenario 3 — Scheduled Weekly Business Report",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 8 * * 1"
+            }
+          ]
+        }
+      },
+      "id": "node-schedule",
+      "name": "Every Monday 8am",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://open.er-api.com/v6/latest/USD",
+        "options": {}
+      },
+      "id": "node-currency",
+      "name": "Fetch Currency Rates",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [480, 300]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://api.open-meteo.com/v1/forecast?latitude=31.5204&longitude=74.3587&current_weather=true&timezone=Asia/Karachi",
+        "options": {}
+      },
+      "id": "node-weather",
+      "name": "Fetch Weather (Lahore)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [720, 300]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum,solana&vs_currencies=usd&include_24hr_change=true",
+        "options": {}
+      },
+      "id": "node-crypto",
+      "name": "Fetch Crypto Prices",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [960, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// ── Pull data from each previous HTTP node ──\nconst currency = $('Fetch Currency Rates').item.json;\nconst weather  = $('Fetch Weather (Lahore)').item.json;\nconst crypto   = $('Fetch Crypto Prices').item.json;\n\n// ── Currency ──\nconst usdPkr = currency.rates?.PKR?.toFixed(2)  || 'N/A';\nconst usdEur = currency.rates?.EUR?.toFixed(4)  || 'N/A';\nconst usdGbp = currency.rates?.GBP?.toFixed(4)  || 'N/A';\nconst usdAed = currency.rates?.AED?.toFixed(4)  || 'N/A';\n\n// ── Weather ──\nconst tempC       = weather.current_weather?.temperature   || 'N/A';\nconst windKph     = weather.current_weather?.windspeed      || 'N/A';\nconst weatherCode = weather.current_weather?.weathercode;\n\n// Simple weather description from WMO code\nfunction describeWeather(code) {\n  if (code === 0)            return '☀️ Clear sky';\n  if (code <= 3)             return '⛅ Partly cloudy';\n  if (code <= 48)            return '🌫️ Foggy';\n  if (code <= 67)            return '🌧️ Rainy';\n  if (code <= 77)            return '❄️ Snowy';\n  if (code <= 82)            return '🌦️ Showers';\n  if (code <= 99)            return '⛈️ Thunderstorm';\n  return '🌡️ Unknown';\n}\n\nconst weatherDesc = describeWeather(weatherCode);\n\n// ── Crypto ──\nconst btcPrice  = crypto.bitcoin?.usd?.toLocaleString()          || 'N/A';\nconst btcChange = crypto.bitcoin?.usd_24h_change?.toFixed(2)     || 'N/A';\nconst ethPrice  = crypto.ethereum?.usd?.toLocaleString()         || 'N/A';\nconst ethChange = crypto.ethereum?.usd_24h_change?.toFixed(2)    || 'N/A';\nconst solPrice  = crypto.solana?.usd?.toLocaleString()           || 'N/A';\nconst solChange = crypto.solana?.usd_24h_change?.toFixed(2)      || 'N/A';\n\n// ── Helper: format 24h change with arrow ──\nfunction fmt(change) {\n  if (change === 'N/A') return 'N/A';\n  const n = parseFloat(change);\n  return n >= 0 ? `🟢 +${change}%` : `🔴 ${change}%`;\n}\n\n// ── Build the report ──\nconst today = new Date().toLocaleDateString('en-PK', {\n  weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'\n});\n\nconst report = `\n<!DOCTYPE html>\n<html>\n<body style=\"font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #1a1a1a;\">\n\n  <div style=\"background: #0f172a; color: white; padding: 24px; border-radius: 12px 12px 0 0;\">\n    <h1 style=\"margin:0; font-size: 22px;\">📊 Weekly Business Briefing</h1>\n    <p style=\"margin: 6px 0 0; opacity: 0.7; font-size: 14px;\">${today}</p>\n  </div>\n\n  <div style=\"border: 1px solid #e2e8f0; border-top: none; border-radius: 0 0 12px 12px; overflow: hidden;\">\n\n    <!-- Currency -->\n    <div style=\"padding: 20px; border-bottom: 1px solid #e2e8f0;\">\n      <h2 style=\"margin: 0 0 14px; font-size: 16px;\">💱 Currency Rates <span style=\"font-weight:normal; color:#64748b; font-size:13px;\">(Base: USD)</span></h2>\n      <table style=\"width:100%; border-collapse: collapse; font-size: 15px;\">\n        <tr style=\"border-bottom:1px solid #f1f5f9;\"><td style=\"padding:8px 0; color:#64748b;\">USD → PKR</td><td style=\"text-align:right; font-weight:600;\">₨ ${usdPkr}</td></tr>\n        <tr style=\"border-bottom:1px solid #f1f5f9;\"><td style=\"padding:8px 0; color:#64748b;\">USD → EUR</td><td style=\"text-align:right; font-weight:600;\">€ ${usdEur}</td></tr>\n        <tr style=\"border-bottom:1px solid #f1f5f9;\"><td style=\"padding:8px 0; color:#64748b;\">USD → GBP</td><td style=\"text-align:right; font-weight:600;\">£ ${usdGbp}</td></tr>\n        <tr><td style=\"padding:8px 0; color:#64748b;\">USD → AED</td><td style=\"text-align:right; font-weight:600;\">د.إ ${usdAed}</td></tr>\n      </table>\n    </div>\n\n    <!-- Weather -->\n    <div style=\"padding: 20px; border-bottom: 1px solid #e2e8f0; background: #f8fafc;\">\n      <h2 style=\"margin: 0 0 14px; font-size: 16px;\">🌤️ Weather — Lahore, Pakistan</h2>\n      <table style=\"width:100%; border-collapse: collapse; font-size: 15px;\">\n        <tr style=\"border-bottom:1px solid #e2e8f0;\"><td style=\"padding:8px 0; color:#64748b;\">Condition</td><td style=\"text-align:right; font-weight:600;\">${weatherDesc}</td></tr>\n        <tr style=\"border-bottom:1px solid #e2e8f0;\"><td style=\"padding:8px 0; color:#64748b;\">Temperature</td><td style=\"text-align:right; font-weight:600;\">${tempC}°C</td></tr>\n        <tr><td style=\"padding:8px 0; color:#64748b;\">Wind Speed</td><td style=\"text-align:right; font-weight:600;\">${windKph} km/h</td></tr>\n      </table>\n    </div>\n\n    <!-- Crypto -->\n    <div style=\"padding: 20px;\">\n      <h2 style=\"margin: 0 0 14px; font-size: 16px;\">₿ Crypto Prices <span style=\"font-weight:normal; color:#64748b; font-size:13px;\">(USD)</span></h2>\n      <table style=\"width:100%; border-collapse: collapse; font-size: 15px;\">\n        <tr style=\"border-bottom:1px solid #f1f5f9;\">\n          <td style=\"padding:8px 0; color:#64748b;\">Bitcoin</td>\n          <td style=\"text-align:right;\"><strong>$${btcPrice}</strong> <span style=\"font-size:13px; margin-left:8px;\">${fmt(btcChange)}</span></td>\n        </tr>\n        <tr style=\"border-bottom:1px solid #f1f5f9;\">\n          <td style=\"padding:8px 0; color:#64748b;\">Ethereum</td>\n          <td style=\"text-align:right;\"><strong>$${ethPrice}</strong> <span style=\"font-size:13px; margin-left:8px;\">${fmt(ethChange)}</span></td>\n        </tr>\n        <tr>\n          <td style=\"padding:8px 0; color:#64748b;\">Solana</td>\n          <td style=\"text-align:right;\"><strong>$${solPrice}</strong> <span style=\"font-size:13px; margin-left:8px;\">${fmt(solChange)}</span></td>\n        </tr>\n      </table>\n    </div>\n\n  </div>\n\n  <p style=\"text-align:center; color:#94a3b8; font-size:12px; margin-top:16px;\">Generated automatically by n8n</p>\n\n</body>\n</html>\n`.trim();\n\nreturn { report, today };"
+      },
+      "id": "node-code",
+      "name": "Format Report",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1200, 300]
+    },
+    {
+      "parameters": {
+        "sendTo": "",
+        "subject": "=📊 Weekly Briefing — {{ $json.today }}",
+        "message": "={{ $json.report }}",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "id": "node-gmail",
+      "name": "Send Weekly Report",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [1440, 300]
+    }
+  ],
+  "connections": {
+    "Every Monday 8am": {
+      "main": [
+        [
+          {
+            "node": "Fetch Currency Rates",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Currency Rates": {
+      "main": [
+        [
+          {
+            "node": "Fetch Weather (Lahore)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Weather (Lahore)": {
+      "main": [
+        [
+          {
+            "node": "Fetch Crypto Prices",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Crypto Prices": {
+      "main": [
+        [
+          {
+            "node": "Format Report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Report": {
+      "main": [
+        [
+          {
+            "node": "Send Weekly Report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "active": false,
+  "settings": {
+    "availableInMCP": false
+  },
+  "meta": {
+    "instanceId": "scenario-3-weekly-report"
+  },
+  "tags": ["scenario-3", "scheduled", "HTTP-request", "code-node", "report"]
+}
