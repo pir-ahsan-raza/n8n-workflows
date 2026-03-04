@@ -66,7 +66,3 @@ Incoming Event (Webhook)
 ```
 
 > Payment failed is the only event that triggers both Slack **and** an email escalation.
-
----
-
-## 🔐 Safe to share — no API keys or credentials stored in this file.
