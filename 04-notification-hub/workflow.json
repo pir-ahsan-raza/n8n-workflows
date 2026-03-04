@@ -1,0 +1,221 @@
+{
+  "name": "Scenario 4 — Team Notification Hub",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "team-notify",
+        "options": {}
+      },
+      "id": "node-webhook",
+      "name": "Incoming Event",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [240, 400],
+      "webhookId": "team-notify-001"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Normalize and validate incoming event\nconst body = $input.item.json.body;\n\nconst allowedTypes = ['new_lead', 'payment_received', 'payment_failed', 'cancellation', 'support_ticket'];\n\nconst eventType = allowedTypes.includes(body.eventType)\n  ? body.eventType\n  : 'unknown';\n\nconst timestamp = new Date().toLocaleString('en-PK', {\n  timeZone: 'Asia/Karachi',\n  dateStyle: 'medium',\n  timeStyle: 'short'\n});\n\nreturn {\n  eventType,\n  timestamp,\n  name:    body.name    || 'N/A',\n  email:   body.email   || 'N/A',\n  amount:  body.amount  || 'N/A',\n  message: body.message || 'N/A',\n  raw: body\n};"
+      },
+      "id": "node-normalize",
+      "name": "Normalize Event",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [480, 400]
+    },
+    {
+      "parameters": {
+        "mode": "rules",
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": { "caseSensitive": false, "leftValue": "", "typeValidation": "strict" },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.eventType }}",
+                    "rightValue": "new_lead",
+                    "operator": { "type": "string", "operation": "equals" }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "new_lead"
+            },
+            {
+              "conditions": {
+                "options": { "caseSensitive": false, "leftValue": "", "typeValidation": "strict" },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.eventType }}",
+                    "rightValue": "payment_received",
+                    "operator": { "type": "string", "operation": "equals" }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "payment_received"
+            },
+            {
+              "conditions": {
+                "options": { "caseSensitive": false, "leftValue": "", "typeValidation": "strict" },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.eventType }}",
+                    "rightValue": "payment_failed",
+                    "operator": { "type": "string", "operation": "equals" }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "payment_failed"
+            },
+            {
+              "conditions": {
+                "options": { "caseSensitive": false, "leftValue": "", "typeValidation": "strict" },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.eventType }}",
+                    "rightValue": "cancellation",
+                    "operator": { "type": "string", "operation": "equals" }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "cancellation"
+            },
+            {
+              "conditions": {
+                "options": { "caseSensitive": false, "leftValue": "", "typeValidation": "strict" },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.eventType }}",
+                    "rightValue": "support_ticket",
+                    "operator": { "type": "string", "operation": "equals" }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "support_ticket"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "node-switch",
+      "name": "Route by Event Type",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3,
+      "position": [720, 400]
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": { "__rl": true, "mode": "list", "value": "" },
+        "text": "=🎯 *New Lead*\n\n*Name:* {{ $json.name }}\n*Email:* {{ $json.email }}\n*Time:* {{ $json.timestamp }}\n\nFollow up within 1 hour.",
+        "otherOptions": {}
+      },
+      "id": "node-slack-lead",
+      "name": "Slack — New Lead",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.4,
+      "position": [960, 100]
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": { "__rl": true, "mode": "list", "value": "" },
+        "text": "=💰 *Payment Received*\n\n*From:* {{ $json.name }}\n*Email:* {{ $json.email }}\n*Amount:* ${{ $json.amount }}\n*Time:* {{ $json.timestamp }}\n\n✅ All good.",
+        "otherOptions": {}
+      },
+      "id": "node-slack-payment",
+      "name": "Slack — Payment Received",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.4,
+      "position": [960, 260]
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": { "__rl": true, "mode": "list", "value": "" },
+        "text": "=🚨 *Payment FAILED — Action Required*\n\n*Customer:* {{ $json.name }}\n*Email:* {{ $json.email }}\n*Amount:* ${{ $json.amount }}\n*Time:* {{ $json.timestamp }}\n\n⚠️ Contact customer immediately.",
+        "otherOptions": {}
+      },
+      "id": "node-slack-failed",
+      "name": "Slack — Payment Failed",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.4,
+      "position": [960, 420]
+    },
+    {
+      "parameters": {
+        "sendTo": "",
+        "subject": "=🚨 Payment Failed — {{ $json.name }} (${{ $json.amount }})",
+        "message": "=A payment has failed and requires immediate attention.\n\nCustomer: {{ $json.name }}\nEmail: {{ $json.email }}\nAmount: ${{ $json.amount }}\nTime: {{ $json.timestamp }}\n\nPlease contact the customer as soon as possible.",
+        "options": { "appendAttribution": false }
+      },
+      "id": "node-email-failed",
+      "name": "Email — Payment Failed Alert",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [1200, 420]
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": { "__rl": true, "mode": "list", "value": "" },
+        "text": "=😞 *Cancellation*\n\n*Customer:* {{ $json.name }}\n*Email:* {{ $json.email }}\n*Reason:* {{ $json.message }}\n*Time:* {{ $json.timestamp }}\n\nConsider a win-back email.",
+        "otherOptions": {}
+      },
+      "id": "node-slack-cancel",
+      "name": "Slack — Cancellation",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.4,
+      "position": [960, 580]
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": { "__rl": true, "mode": "list", "value": "" },
+        "text": "=🎫 *Support Ticket*\n\n*From:* {{ $json.name }}\n*Email:* {{ $json.email }}\n*Message:* {{ $json.message }}\n*Time:* {{ $json.timestamp }}\n\nAssign to support team.",
+        "otherOptions": {}
+      },
+      "id": "node-slack-support",
+      "name": "Slack — Support Ticket",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.4,
+      "position": [960, 740]
+    }
+  ],
+  "connections": {
+    "Incoming Event": {
+      "main": [[{ "node": "Normalize Event", "type": "main", "index": 0 }]]
+    },
+    "Normalize Event": {
+      "main": [[{ "node": "Route by Event Type", "type": "main", "index": 0 }]]
+    },
+    "Route by Event Type": {
+      "main": [
+        [{ "node": "Slack — New Lead",          "type": "main", "index": 0 }],
+        [{ "node": "Slack — Payment Received",   "type": "main", "index": 0 }],
+        [{ "node": "Slack — Payment Failed",     "type": "main", "index": 0 }],
+        [{ "node": "Slack — Cancellation",       "type": "main", "index": 0 }],
+        [{ "node": "Slack — Support Ticket",     "type": "main", "index": 0 }]
+      ]
+    },
+    "Slack — Payment Failed": {
+      "main": [[{ "node": "Email — Payment Failed Alert", "type": "main", "index": 0 }]]
+    }
+  },
+  "pinData": {},
+  "active": false,
+  "settings": { "availableInMCP": false },
+  "meta": { "instanceId": "scenario-4-notification-hub" },
+  "tags": ["scenario-4", "switch-node", "notifications", "routing"]
+}
